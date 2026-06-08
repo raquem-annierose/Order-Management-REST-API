@@ -1,9 +1,0 @@
-com\pup\taguig\ordermanagement\service\impl\package-info.class
-com\pup\taguig\ordermanagement\repository\package-info.class
-com\pup\taguig\ordermanagement\OrderManagementApplication.class
-com\pup\taguig\ordermanagement\model\package-info.class
-com\pup\taguig\ordermanagement\exception\package-info.class
-com\pup\taguig\ordermanagement\repositoryM\package-info.class
-com\pup\taguig\ordermanagement\service\package-info.class
-com\pup\taguig\ordermanagement\dto\package-info.class
-com\pup\taguig\ordermanagement\controller\package-info.class

@@ -1,6 +1,7 @@
 package com.pup.taguig.ordermanagement.controller;
 
 import java.util.Objects;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,14 +15,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pup.taguig.ordermanagement.dto.CustomerRequestDTO;
 import com.pup.taguig.ordermanagement.dto.CustomerResponseDTO;
+import com.pup.taguig.ordermanagement.dto.OrderResponseDTO;
 import com.pup.taguig.ordermanagement.service.CustomerService;
+import com.pup.taguig.ordermanagement.service.OrderService;
 
 @RestController
-@RequestMapping("api/customers")
+@RequestMapping("/api/customers")
 public class CustomerController {
 
     @Autowired
     private CustomerService customerService;
+
+    @Autowired
+    private OrderService orderService;
 
     @PostMapping
     public CustomerResponseDTO registerCustomer(@RequestBody CustomerRequestDTO request) {
@@ -38,5 +44,14 @@ public class CustomerController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
         }
         return customer;
+    }
+
+    @GetMapping("/{id}/orders")
+    public List<OrderResponseDTO> getCustomerOrders(@PathVariable Long id) {
+        CustomerResponseDTO customer = customerService.getCustomerById(id);
+        if (Objects.isNull(customer)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
+        }
+        return orderService.getOrdersByCustomerId(id);
     }
 }

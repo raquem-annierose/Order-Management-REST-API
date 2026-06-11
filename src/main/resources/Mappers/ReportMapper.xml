@@ -3,21 +3,21 @@
 
 <mapper namespace="com.pup.taguig.ordermanagement.repositoryM.ReportMapper">
    
-<select id="getSalesReport" resultType="com.pup.taguig.ordermanagement.dto.TotalSalesReportResponseDTO">
+    <select id="getSalesReport" resultType="com.pup.taguig.ordermanagement.dto.TotalSalesReportResponseDTO">
         SELECT 
-            COUNT(id) AS totalOrders, 
-            COALESCE(SUM(total_price), 0) AS totalRevenue 
+            COUNT(*) AS totalOrders, 
+            SUM(total_price) AS totalRevenue 
         FROM orders
     </select>
 
     <select id="getTopSellingProducts" resultType="com.pup.taguig.ordermanagement.dto.SellingReportResponseDTO">
         SELECT 
-            p.id AS productId, 
+            product_id AS productId, 
             p.name AS name, 
-            SUM(oi.quantity) AS totalSold 
+            SUM(quantity) AS totalSold 
         FROM order_items oi 
         JOIN products p ON oi.product_id = p.id 
-        GROUP BY p.id, p.name 
+        GROUP BY product_id
         ORDER BY totalSold DESC
     </select>
   

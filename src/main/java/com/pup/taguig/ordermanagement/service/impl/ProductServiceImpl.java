@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.pup.taguig.ordermanagement.dto.ProductRequestDTO;
@@ -21,7 +23,6 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public ProductResponseDTO createProduct(ProductRequestDTO request) {
-		// Validation: Price must be > 0 and Stock must be >= 0
 		if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0 || request.getStock() < 0) {
 			return null; 
 		}
@@ -37,10 +38,17 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	public List<ProductResponseDTO> getAllProducts() {
-		List<Product> products = productRepository.findAll();
-		List<ProductResponseDTO> responseList = new ArrayList<>();
+	public List<ProductResponseDTO> getAllProducts(Integer page, Integer size) {
+		List<Product> products;
 		
+		if (page != null && size != null) {
+			Pageable pageable = PageRequest.of(page, size);
+			products = productRepository.findAll(pageable).getContent();
+		} else {
+			products = productRepository.findAll();
+		}
+		
+		List<ProductResponseDTO> responseList = new ArrayList<>();
 		for (Product p : products) {
 			responseList.add(toDTO(p));
 		}

@@ -1,0 +1,142 @@
+package com.pup.taguig.ordermanagement.service.impl;
+
+import com.pup.taguig.ordermanagement.dto.OrderItemRequestDTO;
+import com.pup.taguig.ordermanagement.dto.OrderItemResponseDTO;
+import com.pup.taguig.ordermanagement.dto.OrderRequestDTO;
+import com.pup.taguig.ordermanagement.dto.OrderResponseDTO;
+import com.pup.taguig.ordermanagement.model.Order;
+import com.pup.taguig.ordermanagement.model.OrderItem;
+import com.pup.taguig.ordermanagement.model.OrderStatus;
+import com.pup.taguig.ordermanagement.model.Product;
+import com.pup.taguig.ordermanagement.repository.CustomerRepository;
+import com.pup.taguig.ordermanagement.repository.OrderRepository;
+import com.pup.taguig.ordermanagement.repository.ProductRepository;
+import com.pup.taguig.ordermanagement.service.OrderService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class OrderServiceImpl implements OrderService {
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Override
+    public List<OrderResponseDTO> getAllOrders() {
+        return orderRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OrderResponseDTO> getOrdersByCustomerId(Long customerId) {
+        return orderRepository.findByCustomerId(customerId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public OrderResponseDTO getOrderById(Long id) {
+        Order order = orderRepository.findById(id).orElse(null);
+        if (order == null) return null;
+        return toDTO(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDTO createOrder(OrderRequestDTO request) {
+        var customerOpt = customerRepository.findById(request.getCustomerId());
+        if (customerOpt.isEmpty()) return null;
+
+        Order order = new Order();
+        order.setCustomer(customerOpt.get());
+        order.setStatus(OrderStatus.PENDING);
+
+        List<OrderItem> items = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (OrderItemRequestDTO itemReq : request.getItems()) {
+            Product product = productRepository.findById(itemReq.getProductId()).orElse(null);
+            
+            if (product == null || product.getStock() < itemReq.getQuantity()) {
+                return null; 
+            }
+
+            int requestedQty = itemReq.getQuantity();
+            product.setStock(product.getStock() - requestedQty);
+            productRepository.save(product);
+
+            OrderItem item = new OrderItem();
+            item.setProduct(product);
+            item.setQuantity(requestedQty);
+            item.setUnitPrice(product.getPrice());
+            item.setOrder(order);
+
+            // Rule: Total price is calculated automatically
+            BigDecimal qty = BigDecimal.valueOf(requestedQty);
+            total = total.add(product.getPrice().multiply(qty));
+
+            items.add(item);
+        }
+
+        order.setItems(items);
+        order.setTotalPrice(total);
+
+        Order saved = orderRepository.save(order);
+        return toDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteOrder(Long id) {
+        Order order = orderRepository.findById(id).orElse(null);
+
+        if (order == null || order.getStatus() != OrderStatus.PENDING) {
+            return false;
+        }
+
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            product.setStock(product.getStock() + item.getQuantity());
+            productRepository.save(product);
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+        return true;
+    }
+
+    private OrderResponseDTO toDTO(Order order) {
+        OrderResponseDTO dto = new OrderResponseDTO();
+        dto.setId(order.getId());
+        dto.setCustomerId(order.getCustomer().getId());
+        dto.setStatus(order.getStatus().name());
+        dto.setTotalPrice(order.getTotalPrice());
+        dto.setCreatedAt(order.getCreatedAt());
+
+        if (order.getItems() != null) {
+            List<OrderItemResponseDTO> itemDTOs = order.getItems().stream().map(item -> {
+                OrderItemResponseDTO itemDTO = new OrderItemResponseDTO();
+                itemDTO.setProductId(item.getProduct().getId());
+                itemDTO.setQuantity(item.getQuantity());
+                itemDTO.setUnitPrice(item.getUnitPrice());
+                return itemDTO;
+            }).collect(Collectors.toList());
+            dto.setItems(itemDTOs);
+        }
+        
+        return dto;
+    }
+}
